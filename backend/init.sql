@@ -33,11 +33,12 @@ CREATE TABLE document_operations (
 
 -- Uprawnienia do dokumentów
 CREATE TABLE document_permissions (
+    id BIGSERIAL PRIMARY KEY,         
     document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id),
     role VARCHAR(20) NOT NULL CHECK (role IN ('OWNER','EDITOR','VIEWER')),
     granted_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (document_id, user_id)
+    UNIQUE (document_id, user_id)      
 );
 
 CREATE TABLE active_sessions (
