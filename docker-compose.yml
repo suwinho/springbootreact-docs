@@ -1,0 +1,76 @@
+services:
+
+  redis:
+    image: redis:8
+    container_name: redis
+    networks:
+      - app-net
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_USER_FILE: /run/secrets/db_username
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    secrets:
+      - db_username
+      - db_password
+    networks:
+      - db-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    ports:
+      - "8080:8080"
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  postgres-data:
+  redis-data:
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  db_username:
+    file: ./secrets/db_username.txt
+
+networks:
+  app-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${APP_SUBNET}
+          gateway: ${APP_GATEWAY}
+  db-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${DB_SUBNET}
+          gateway: ${DB_GATEWAY}
