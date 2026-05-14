@@ -48,7 +48,7 @@ public class SecurityConfig {
             Map<String, Object> realms = jwt.getClaimAsMap("realm_access");
             if (realms == null) return Collections.emptyList();
             List<String> roles = (List<String>) realms.get("roles");
-            return roles.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList());        
+            return roles.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList());
         }
     }
 
