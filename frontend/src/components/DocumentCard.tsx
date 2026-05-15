@@ -44,7 +44,6 @@ export default function DocumentCard({ document: doc }: Props) {
       }}
       aria-label={`Otwórz dokument: ${doc.title}`}
     >
-      {/* Document icon */}
       <div className={styles.iconWrap}>
         <svg className={styles.docIcon} viewBox="0 0 40 48" fill="none">
           <rect width="40" height="48" rx="6" fill="url(#docGrad)" />
@@ -60,7 +59,6 @@ export default function DocumentCard({ document: doc }: Props) {
         <span className={styles.docExt}>DOCX</span>
       </div>
 
-      {/* Content */}
       <div className={styles.content}>
         <div className={styles.topRow}>
           <h3 className={styles.title}>{doc.title}</h3>
@@ -78,7 +76,6 @@ export default function DocumentCard({ document: doc }: Props) {
           Zmodyfikowano: {formatDate(doc.lastModified)}
         </p>
 
-        {/* Active editors */}
         {doc.editors.length > 0 && (
           <div className={styles.editorsRow}>
             <div className={styles.avatarStack}>
@@ -107,7 +104,6 @@ export default function DocumentCard({ document: doc }: Props) {
         )}
       </div>
 
-      {/* Footer */}
       <div className={styles.footer}>
         <span className={styles.size}>{doc.size}</span>
         <button
