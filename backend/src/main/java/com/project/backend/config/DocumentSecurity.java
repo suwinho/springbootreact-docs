@@ -5,7 +5,6 @@ import java.util.UUID;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
-import com.project.backend.model.Document;
 import com.project.backend.repository.DocumentPermissionRepository;
 import com.project.backend.repository.DocumentRepository;
 
