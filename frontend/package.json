@@ -9,17 +9,27 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@stomp/stompjs": "^7.3.0",
+    "@tiptap/extension-collaboration": "^3.23.4",
+    "@tiptap/extension-collaboration-cursor": "^2.26.2",
+    "@tiptap/react": "^3.23.4",
+    "@tiptap/starter-kit": "^3.23.4",
+    "@tiptap/y-tiptap": "^3.0.3",
     "keycloak-js": "^26.2.4",
     "next": "16.2.6",
     "next-auth": "^5.0.0-beta.31",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "swr": "^2.4.1"
+    "sockjs-client": "^1.6.1",
+    "swr": "^2.4.1",
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.30"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/sockjs-client": "^1.5.4",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",

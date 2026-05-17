@@ -40,10 +40,21 @@ services:
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      KC_DB_USERNAME: user
+      KC_DB_PASSWORD: abc
+    secrets:
+      - db_username
+      - db_password
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "8080:8080"
     networks:
       - app-net
+      - db-net
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
       interval: 15s

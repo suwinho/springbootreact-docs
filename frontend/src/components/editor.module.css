@@ -1,0 +1,31 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.statusBar {
+  display: flex;
+  gap: 2rem;
+  padding: 10px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.statusConnected {
+  color: #10b981;
+  font-weight: bold;
+}
+
+.statusDisconnected {
+  color: #ef4444;
+  font-weight: bold;
+}
+
+.editorWrapper {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  min-height: 500px;
+  background: white;
+}

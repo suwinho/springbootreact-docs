@@ -2,11 +2,15 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import styles from './editor.module.css';
+import Editor from '@/components/Editor';
+import { signOut, useSession } from 'next-auth/react';
+
 
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-
+  const { data: session, status } = useSession();
+  const accessToken = (session as any)?.accessToken;
   return (
     <div className={styles.page}>
       <div className={styles.topbar}>
@@ -35,10 +39,9 @@ export default function EditorPage() {
           </defs>
         </svg>
         <h2>Edytor dokumentów</h2>
-        <p>
-          Tu będzie działał kolaboratywny edytor Word z obsługą WebSocket.<br />
-          Real-time OT/CRDT — wkrótce! 🚀
-        </p>
+        <div>
+          <Editor documentId={id} token={accessToken} />
+        </div>
       </div>
     </div>
   );
