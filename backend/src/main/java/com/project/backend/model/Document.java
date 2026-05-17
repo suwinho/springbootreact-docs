@@ -31,7 +31,35 @@ public class Document {
     private User owner;
     
     @Column(columnDefinition = "jsonb", nullable = false)
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     private String content = "{}";
+
+    public void setContent(String content) {
+        if (content != null) {
+            content = content.trim();
+            if (content.startsWith("{") && content.contains("\"yjsUpdate\"")) {
+                this.content = content;
+            } else {
+                this.content = "{\"yjsUpdate\":\"" + content + "\"}";
+            }
+        } else {
+            this.content = "{}";
+        }
+    }
+
+    public String getRawContent() {
+        if (content != null && content.startsWith("{") && content.contains("\"yjsUpdate\"")) {
+            int start = content.indexOf("\"yjsUpdate\":\"");
+            if (start != -1) {
+                start += "\"yjsUpdate\":\"".length();
+                int end = content.lastIndexOf("\"");
+                if (end > start) {
+                    return content.substring(start, end);
+                }
+            }
+        }
+        return content;
+    }
     
     @Column(name = "content_snapshot", columnDefinition = "text")
     private String contentSnapshot;

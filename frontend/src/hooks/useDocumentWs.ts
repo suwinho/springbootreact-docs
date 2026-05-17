@@ -29,9 +29,9 @@ export default function useDocumentWS(
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!token || documentId) return;
+    if (!token || !documentId) return;
     const client = new Client({
-      webSocketFactory: () => new SockJS("http://localhost:8080/ws"),
+      webSocketFactory: () => new SockJS("/ws"),
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },
@@ -54,7 +54,7 @@ export default function useDocumentWS(
 
     yDoc.on('update', (update, origin) => {
       if (origin === 'remote') return;
-      const bytes = toBase64(update);
+      const bytes = toBase64(Y.encodeStateAsUpdate(yDoc));
       client.publish({
         destination: `/app/doc/${documentId}/edit`,
         body: bytes,

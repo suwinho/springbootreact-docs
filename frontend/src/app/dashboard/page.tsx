@@ -33,10 +33,22 @@ export default function DashboardPage() {
   const [shareEmail, setShareEmail] = useState('');
   const [shareLoading, setShareLoading] = useState(false);
 
-  const { data: documents = [], error, isLoading } = useSWR(
+  const { data: rawDocuments, error, isLoading } = useSWR(
     accessToken ? ['/api/documents', accessToken] : null,
     ([url, token]) => fetcher(url, token)
   );
+
+  const documents = (Array.isArray(rawDocuments)
+    ? rawDocuments
+    : (rawDocuments && Array.isArray((rawDocuments as any).content) ? (rawDocuments as any).content : [])
+  ).map((doc: any) => ({
+    id: doc.id,
+    title: doc.title || 'Untitled',
+    lastModified: doc.updatedAt || doc.createdAt || new Date().toISOString(),
+    editors: doc.editors || [],
+    size: doc.size || '0 KB',
+    status: doc.status || 'idle',
+  }));
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -102,19 +114,26 @@ export default function DashboardPage() {
     
     setShareLoading(true);
     try {
-      await fetch(`/api/documents/${shareDocId}/share`, {
+      const res = await fetch(`/api/documents/${shareDocId}/share`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
         },
-        body: JSON.stringify({ email: shareEmail }),
+        body: JSON.stringify({ email: shareEmail, role: 'EDITOR' }),
       });
+      if (!res.ok) {
+        if (res.status === 400) {
+          throw new Error('Nie znaleziono użytkownika o podanym adresie email (użytkownik musi zalogować się chociaż raz, aby istnieć w bazie).');
+        } else {
+          throw new Error('Serwer zwrócił błąd podczas udostępniania.');
+        }
+      }
       alert(`Udostępniono dokument użytkownikowi: ${shareEmail}`);
       setShareModalOpen(false);
       setShareEmail('');
-    } catch (err) {
-      alert('Błąd podczas udostępniania.');
+    } catch (err: any) {
+      alert(err.message || 'Błąd podczas udostępniania.');
     } finally {
       setShareLoading(false);
     }

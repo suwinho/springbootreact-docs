@@ -15,10 +15,17 @@ import com.project.backend.service.RedisDocumentService;
 public class WebSocketEventListener {
     private final RedisDocumentService redisDocumentService;
     private final SimpMessageSendingOperations msg;
+    private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+    private final com.project.backend.repository.DocumentRepository documentRepository;
 
-    public WebSocketEventListener(RedisDocumentService redisDocumentService, SimpMessageSendingOperations msg) {
+    public WebSocketEventListener(RedisDocumentService redisDocumentService, 
+                                  SimpMessageSendingOperations msg,
+                                  org.springframework.data.redis.core.StringRedisTemplate redisTemplate,
+                                  com.project.backend.repository.DocumentRepository documentRepository) {
         this.redisDocumentService = redisDocumentService;
         this.msg = msg;
+        this.redisTemplate = redisTemplate;
+        this.documentRepository = documentRepository;
     }
 
     @EventListener
@@ -34,6 +41,24 @@ public class WebSocketEventListener {
             redisDocumentService.addSession(sessionId, docId, username);
             List<String> users = redisDocumentService.getOnlineUsers(docId);
             msg.convertAndSend("/topic/doc/" + docId + "/presence", users);
+
+            String currentContent = redisTemplate.opsForValue().get("document:" + docId + ":content");
+            if (currentContent == null) {
+                try {
+                    java.util.UUID documentUUID = java.util.UUID.fromString(docId);
+                    com.project.backend.model.Document doc = documentRepository.findById(documentUUID).orElse(null);
+                    if (doc != null && doc.getContent() != null) {
+                        currentContent = doc.getRawContent();
+                        if (currentContent != null) {
+                            redisTemplate.opsForValue().set("document:" + docId + ":content", currentContent);
+                        }
+                    }
+                } catch (Exception e) {
+                }
+            }
+            if (currentContent != null && !currentContent.isEmpty() && !currentContent.equals("{}")) {
+                msg.convertAndSend("/topic/doc/" + docId, currentContent);
+            }
         }
     }
 

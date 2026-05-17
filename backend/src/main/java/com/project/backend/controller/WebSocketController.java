@@ -24,9 +24,17 @@ public class WebSocketController {
 
     @MessageMapping("/doc/{id}/edit")
     @SendTo("/topic/doc/{id}")
-    public String handle(@DestinationVariable UUID id, @Payload String msg, JwtAuthenticationToken auth) {
-        if (docSecurity.hasRole(id, "EDITOR", auth)) {
-            redisDocumentService.saveToRedis(id, msg);
+    public String handle(@DestinationVariable UUID id, @Payload String msg, java.security.Principal principal) {
+        System.out.println("[WS-DEBUG] WebSocket message received for doc: " + id + ", principal: " + principal);
+        if (principal instanceof JwtAuthenticationToken auth) {
+            if (docSecurity.hasRole(id, "EDITOR", auth)) {
+                System.out.println("[WS-DEBUG] Save permitted. Saving to Redis...");
+                redisDocumentService.saveToRedis(id, msg);
+            } else {
+                System.out.println("[WS-DEBUG] Save denied. Principal has no EDITOR permission on doc: " + id);
+            }
+        } else {
+            System.out.println("[WS-DEBUG] Save denied. Principal is not JwtAuthenticationToken: " + principal);
         }
         return msg;
     }

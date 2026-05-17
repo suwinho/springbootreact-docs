@@ -46,13 +46,12 @@ public class DocumentController {
         this.documentPermissionRepository = documentPermissionRepository;
     }
 
-    @PreAuthorize("@docSecurity.hasRole(#id, 'VIEWER', authentication)")
     @GetMapping
     public ResponseEntity<Page<Document>> getDocuments(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
         userSyncService.userSync();
         JwtAuthenticationToken jwtToken = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         UUID ownerId = UUID.fromString(jwtToken.getToken().getSubject());
-        Page<Document> docsList = documentRepository.findByOwnerId(ownerId, PageRequest.of(page,size));
+        Page<Document> docsList = documentRepository.findOwnedOrShared(ownerId, PageRequest.of(page,size));
         return ResponseEntity.ok(docsList);
     }
 
@@ -60,6 +59,11 @@ public class DocumentController {
     @PostMapping
     public ResponseEntity<Document> createDocument(@RequestBody Document document) {
         userSyncService.userSync();
+        JwtAuthenticationToken jwtToken = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        UUID ownerId = UUID.fromString(jwtToken.getToken().getSubject());
+        User owner = userRepository.findById(ownerId)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        document.setOwner(owner);
         Document createdDocument = documentRepository.save(document);
         return ResponseEntity.ok(createdDocument);
     }

@@ -26,7 +26,7 @@ public class DocumentSyncScheduler {
         }
 
         for (String idStr : dirtyDocsId) {
-            String content = redisTemplate.opsForValue().get("document:" + idStr);
+            String content = redisTemplate.opsForValue().get("document:" + idStr + ":content");
             UUID docId = UUID.fromString(idStr);
             documentService.updateContent(docId, content); 
             
