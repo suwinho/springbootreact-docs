@@ -9,7 +9,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       - SPRING_DATASOURCE_USERNAME=user
       - SPRING_DATASOURCE_PASSWORD=abc
-      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://${LOCAL_IP}:8080/realms/docs
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://lvh.me:8080/realms/docs
       - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/realms/docs/protocol/openid-connect/certs
       - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY=DEBUG
       - SPRING_DATA_REDIS_HOST=redis
@@ -31,7 +31,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       - SPRING_DATASOURCE_USERNAME=user
       - SPRING_DATASOURCE_PASSWORD=abc
-      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://${LOCAL_IP}:8080/realms/docs
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://lvh.me:8080/realms/docs
       - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/realms/docs/protocol/openid-connect/certs
       - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY=DEBUG
       - SPRING_DATA_REDIS_HOST=redis
@@ -51,13 +51,13 @@ services:
       - AUTH_TRUST_HOST=true
       - KEYCLOAK_CLIENT_ID=docs-app
       - KEYCLOAK_CLIENT_SECRET=UTRPYOFyA9CRzdW0psndgr8xCeOwvnm2
-      - KEYCLOAK_ISSUER=http://${LOCAL_IP}:8080/realms/docs
+      - KEYCLOAK_ISSUER=http://lvh.me:8080/realms/docs
       - KEYCLOAK_INTERNAL_ISSUER=http://keycloak:8080/realms/docs
-      - KEYCLOAK_PUBLIC_ISSUER=http://${LOCAL_IP}:8080
+      - KEYCLOAK_PUBLIC_ISSUER=http://lvh.me:8080
       - AUTH_URL=http://localhost/api/auth
       - NEXTAUTH_URL=http://localhost
       - BACKEND_URL=http://nginx
-      - LOCAL_IP=${LOCAL_IP}
+      - LOCAL_IP=lvh.me
     depends_on:
       - backend_1
       - backend_2
@@ -121,6 +121,7 @@ services:
       KC_DB_USERNAME: user
       KC_DB_PASSWORD: abc
       KC_HEALTH_ENABLED: "true"
+      KC_HOSTNAME: lvh.me
     secrets:
       - db_username
       - db_password
@@ -130,8 +131,10 @@ services:
     ports:
       - "8080:8080"
     networks:
-      - app-net
-      - db-net
+      app-net:
+        aliases:
+          - lvh.me
+      db-net:
     healthcheck:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /health/ready HTTP/1.1\r\nhost: localhost\r\nConnection: close\r\n\r\n' >&3 && grep 'HTTP/1.1 200 OK' <&3"]
       interval: 15s
