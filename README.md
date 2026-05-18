@@ -73,9 +73,8 @@ graph TD
     [**http://localhost/**](http://localhost/)
 2.  It will redirect you to the **Keycloak** login page (running on `lvh.me:8080`).
 3.  **Test Accounts:**
-    
-    Username: abc     |   Username: kasia
-    Password: abc     |   Password: 123
+    *   **User 1:** Username: `abc` | Password: `123`
+    *   **User 2:** Username: `kasia` | Password: `123`
 
 4.  **How to test collaboration:**
     *   Log in as `abc` in a normal browser tab.
