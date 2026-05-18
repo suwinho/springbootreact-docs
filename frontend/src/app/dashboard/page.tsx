@@ -15,7 +15,7 @@ const fetcher = async (url: string, token?: string) => {
     headers['Authorization'] = `Bearer ${token}`;
   }
   const res = await fetch(url, { headers });
-  if (!res.ok) throw new Error('Błąd pobierania danych');
+  if (!res.ok) throw new Error('Failed to fetch data');
   return res.json();
 };
 
@@ -48,6 +48,7 @@ export default function DashboardPage() {
     editors: doc.editors || [],
     size: doc.size || '0 KB',
     status: doc.status || 'idle',
+    ownerUsername: doc.owner?.username || doc.ownerUsername || 'Unknown',
   }));
 
   useEffect(() => {
@@ -60,12 +61,12 @@ export default function DashboardPage() {
     return (
       <div className={styles.loadingScreen}>
         <div className={styles.loadingSpinner} />
-        <p>Ładowanie...</p>
+        <p>Loading...</p>
       </div>
     );
   }
 
-  const userName = session?.user?.name ?? session?.user?.email ?? 'Użytkownik';
+  const userName = session?.user?.name ?? session?.user?.email ?? 'User';
   const userInitials = userName
     .split(' ')
     .map((n: string) => n[0])
@@ -84,7 +85,7 @@ export default function DashboardPage() {
   const handleCreateDocument = async () => {
     const newDoc = {
       id: Date.now().toString(),
-      title: 'Nowy Dokument',
+      title: 'New Document',
       lastModified: new Date().toISOString(),
       editors: [],
       size: '0 KB',
@@ -100,7 +101,7 @@ export default function DashboardPage() {
           'Content-Type': 'application/json',
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
         },
-        body: JSON.stringify({ title: 'Nowy Dokument' }),
+        body: JSON.stringify({ title: 'New Document' }),
       });
       mutate(['/api/documents', accessToken]);
     } catch (e) {
@@ -124,16 +125,16 @@ export default function DashboardPage() {
       });
       if (!res.ok) {
         if (res.status === 400) {
-          throw new Error('Nie znaleziono użytkownika o podanym adresie email (użytkownik musi zalogować się chociaż raz, aby istnieć w bazie).');
+          throw new Error('User not found with this email (the user must log in at least once to be registered in the database).');
         } else {
-          throw new Error('Serwer zwrócił błąd podczas udostępniania.');
+          throw new Error('Server returned an error while sharing.');
         }
       }
-      alert(`Udostępniono dokument użytkownikowi: ${shareEmail}`);
+      alert(`Document shared with: ${shareEmail}`);
       setShareModalOpen(false);
       setShareEmail('');
     } catch (err: any) {
-      alert(err.message || 'Błąd podczas udostępniania.');
+      alert(err.message || 'Error while sharing.');
     } finally {
       setShareLoading(false);
     }
@@ -165,9 +166,9 @@ export default function DashboardPage() {
           <a href="#" id="nav-dashboard" className={`${styles.navItem} ${styles.navItemActive}`}>
             Dashboard
           </a>
-          <a href="#" id="nav-documents" className={styles.navItem}>Moje Dokumenty</a>
-          <a href="#" id="nav-shared" className={styles.navItem}>Udostępnione</a>
-          <a href="#" id="nav-recent" className={styles.navItem}>Ostatnie</a>
+          <a href="#" id="nav-documents" className={styles.navItem}>My Documents</a>
+          <a href="#" id="nav-shared" className={styles.navItem}>Shared</a>
+          <a href="#" id="nav-recent" className={styles.navItem}>Recent</a>
         </nav>
 
         <div className={styles.sidebarFooter}>
@@ -182,9 +183,9 @@ export default function DashboardPage() {
             id="logout-btn"
             className={styles.logoutBtn}
             onClick={() => signOut({ callbackUrl: '/login' })}
-            title="Wyloguj"
+            title="Log out"
           >
-            Wyloguj
+            Log out
           </button>
         </div>
       </aside>
@@ -193,37 +194,37 @@ export default function DashboardPage() {
         <header className={styles.header}>
           <div>
             <h1 className={styles.headerTitle}>Dashboard</h1>
-            <p className={styles.headerSubtitle}>Zarządzaj swoimi dokumentami</p>
+            <p className={styles.headerSubtitle}>Manage your documents</p>
           </div>
           <button id="new-doc-btn" className={styles.newDocBtn} onClick={handleCreateDocument}>
-            Nowy dokument
+            New document
           </button>
         </header>
 
         <div className={styles.statsRow}>
           <div className={styles.statCard}>
             <span className={styles.statValue}>{documents.length}</span>
-            <span className={styles.statLabel}>Wszystkich dokumentów</span>
+            <span className={styles.statLabel}>Total documents</span>
           </div>
           <div className={styles.statCard}>
             <span className={`${styles.statValue} ${styles.statActive}`}>{activeCount}</span>
-            <span className={styles.statLabel}>Aktywnie edytowanych</span>
+            <span className={styles.statLabel}>Actively edited</span>
           </div>
           <div className={styles.statCard}>
             <span className={styles.statValue}>
               {documents.reduce((sum: number, d: any) => sum + (d.editors?.length || 0), 0)}
             </span>
-            <span className={styles.statLabel}>Aktywnych użytkowników</span>
+            <span className={styles.statLabel}>Active users</span>
           </div>
         </div>
 
         <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Twoje dokumenty</h2>
+          <h2 className={styles.sectionTitle}>Your documents</h2>
           
           <div className={styles.controlsRow}>
             <input 
               type="text"
-              placeholder="Szukaj dokumentów..."
+              placeholder="Search documents..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={styles.searchInput}
@@ -233,46 +234,46 @@ export default function DashboardPage() {
                 id="filter-all" 
                 className={`${styles.filterBtn} ${filter === 'all' ? styles.filterActive : ''}`}
                 onClick={() => setFilter('all')}
-              >Wszystkie</button>
+              >All</button>
               <button 
                 id="filter-active" 
                 className={`${styles.filterBtn} ${filter === 'active' ? styles.filterActive : ''}`}
                 onClick={() => setFilter('active')}
-              >Aktywne</button>
+              >Active</button>
               <button 
                 id="filter-idle" 
                 className={`${styles.filterBtn} ${filter === 'idle' ? styles.filterActive : ''}`}
                 onClick={() => setFilter('idle')}
-              >Nieaktywne</button>
+              >Inactive</button>
             </div>
           </div>
         </div>
 
-        {error && <div className={styles.errorText}>Wystąpił błąd podczas pobierania dokumentów.</div>}
+        {error && <div className={styles.errorText}>An error occurred while fetching documents.</div>}
 
         <div className={styles.documentGrid}>
           {filteredDocs.map((doc: any) => (
             <div key={doc.id} className={styles.cardWrapper}>
-              <DocumentCard document={doc} />
+              <DocumentCard document={doc} token={accessToken} onRenamed={() => mutate(['/api/documents', accessToken])} />
               <button 
                 onClick={() => openShareModal(doc.id)}
                 className={styles.shareBtn}
               >
-                Udostępnij
+                Share
               </button>
             </div>
           ))}
-          {filteredDocs.length === 0 && <p>Brak dokumentów spełniających kryteria.</p>}
+          {filteredDocs.length === 0 && <p>No documents matching the criteria.</p>}
         </div>
       </main>
 
       {shareModalOpen && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
-            <h3 className={styles.modalTitle}>Udostępnij Dokument</h3>
+            <h3 className={styles.modalTitle}>Share Document</h3>
             <form onSubmit={handleShareSubmit}>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Email użytkownika</label>
+                <label className={styles.formLabel}>User email</label>
                 <input 
                   type="email" 
                   required
@@ -286,12 +287,12 @@ export default function DashboardPage() {
                   type="button" 
                   onClick={() => setShareModalOpen(false)}
                   className={styles.cancelBtn}
-                >Anuluj</button>
+                >Cancel</button>
                 <button 
                   type="submit" 
                   disabled={shareLoading}
                   className={styles.submitBtn}
-                >{shareLoading ? 'Wysyłanie...' : 'Udostępnij'}</button>
+                >{shareLoading ? 'Sending...' : 'Share'}</button>
               </div>
             </form>
           </div>

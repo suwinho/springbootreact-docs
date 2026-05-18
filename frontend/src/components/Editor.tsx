@@ -26,11 +26,11 @@ export default function Editor({ documentId, token }: EditorProps) {
     <div className={styles.container}>
       <div className={styles.statusBar}>
         <div className={connected ? styles.statusConnected : styles.statusDisconnected}>
-          {connected ? "🟢 Połączono z serwerem" : "🔴 Trwa łączenie..."}
+          {connected ? "🟢 Connected to server" : "🔴 Connecting..."}
         </div>
         <div>
-          <strong>Aktywni użytkownicy: </strong>
-          {onlineUsers.length > 0 ? onlineUsers.join(", ") : "Tylko Ty"}
+          <strong>Active users: </strong>
+          {onlineUsers.length > 0 ? onlineUsers.join(", ") : "Just you"}
         </div>
       </div>
       <div className={styles.editorWrapper}>

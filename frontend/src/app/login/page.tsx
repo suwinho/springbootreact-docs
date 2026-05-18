@@ -39,14 +39,14 @@ export default function LoginPage() {
         </div>
 
         <div className={styles.divider}>
-          <span>Zaloguj się, aby kontynuować</span>
+          <span>Sign in to continue</span>
         </div>
 
         <ul className={styles.features}>
           {[
-            { icon: '✦', text: 'Edycja dokumentów w czasie rzeczywistym' },
-            { icon: '✦', text: 'Współpraca z wieloma użytkownikami naraz' },
-            { icon: '✦', text: 'Bezpieczne uwierzytelnianie przez Keycloak' },
+            { icon: '✦', text: 'Real-time document editing' },
+            { icon: '✦', text: 'Collaborate with multiple users at once' },
+            { icon: '✦', text: 'Secure authentication via Keycloak' },
           ].map((f) => (
             <li key={f.text} className={styles.featureItem}>
               <span className={styles.featureIcon}>{f.icon}</span>
@@ -68,11 +68,11 @@ export default function LoginPage() {
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           )}
-          {isLoading ? 'Przekierowanie...' : 'Zaloguj przez Keycloak'}
+          {isLoading ? 'Redirecting...' : 'Sign in with Keycloak'}
         </button>
 
         <p className={styles.footer}>
-          Uwierzytelnione przez{' '}
+          Authenticated by{' '}
           <span className={styles.footerAccent}>Keycloak SSO</span>
         </p>
       </div>

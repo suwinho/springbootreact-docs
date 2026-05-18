@@ -1,6 +1,7 @@
 package com.project.backend.controller;
 
 import com.nimbusds.jose.proc.SecurityContext;
+import com.project.backend.dto.DocumentDTO;
 import com.project.backend.model.Document;
 import com.project.backend.model.DocumentPermission;
 import com.project.backend.model.User;
@@ -47,12 +48,19 @@ public class DocumentController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<Document>> getDocuments(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+    public ResponseEntity<Page<DocumentDTO>> getDocuments(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
         userSyncService.userSync();
         JwtAuthenticationToken jwtToken = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         UUID ownerId = UUID.fromString(jwtToken.getToken().getSubject());
         Page<Document> docsList = documentRepository.findOwnedOrShared(ownerId, PageRequest.of(page,size));
-        return ResponseEntity.ok(docsList);
+        Page<DocumentDTO> dtoPage = docsList.map(doc -> new DocumentDTO(
+            doc.getId(),
+            doc.getTitle(),
+            doc.getOwner() != null ? doc.getOwner().getUsername() : "Unknown",
+            doc.getCreatedAt(),
+            doc.getUpdatedAt()
+        ));
+        return ResponseEntity.ok(dtoPage);
     }
 
     
