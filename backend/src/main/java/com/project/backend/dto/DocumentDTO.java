@@ -8,5 +8,6 @@ public record DocumentDTO(
     String title,
     String ownerUsername,   
     LocalDateTime createdAt,
-    LocalDateTime updatedAt
+    LocalDateTime updatedAt,
+    String myRole
 ) {}

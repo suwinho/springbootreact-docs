@@ -6,11 +6,11 @@ A Google Docs clone with real-time editing. Everything runs in Docker containers
 
 ## 🌟 What it does
 
-*   **Real-Time Editing:** Multiple users can write in the same document at the same time. No merge conflicts, powered by **Y.js (CRDT)**.
-*   **Live Presence:** See who is currently editing in real-time. Displays friendly usernames (like `abc` or `kasia`) parsed directly from JWT tokens, with deduplication so you don't see double names if you open multiple tabs.
-*   **Simple Dashboard:** View your own documents and the ones shared with you.
-*   **Document Sharing:** Share documents with other registered users by typing their email. It pops up on their dashboard immediately.
-*   **Security:** Fully secured with **Keycloak** (OIDC/OAuth2). Every API call and WebSocket connection is protected via JWT tokens (Spring Security Resource Server).
+- **Real-Time Editing:** Multiple users can write in the same document at the same time. No merge conflicts, powered by **Y.js (CRDT)**.
+- **Live Presence:** See who is currently editing in real-time. Displays friendly usernames (like `abc` or `kasia`) parsed directly from JWT tokens, with deduplication so you don't see double names if you open multiple tabs.
+- **Simple Dashboard:** View your own documents and the ones shared with you.
+- **Document Sharing:** Share documents with other registered users by typing their email. It pops up on their dashboard immediately.
+- **Security:** Fully secured with **Keycloak** (OIDC/OAuth2). Every API call and WebSocket connection is protected via JWT tokens (Spring Security Resource Server).
 
 ---
 
@@ -21,19 +21,19 @@ All services are containerized and handled by Docker Compose. Nginx handles rout
 ```mermaid
 graph TD
     User([User Browser]) <-->|Port 80 HTTP / WebSocket| Nginx{Nginx Gateway}
-    
+
     %% Gateway routing
     Nginx <-->|/| Frontend[Next.js Client Container]
     Nginx <-->|/api /ws| Backend[Spring Boot Backend]
-    
+
     %% Auth & Backend services
     User <-->|Port 8080| Keycloak{Keycloak OIDC}
     Backend <-->|JWT Verification| Keycloak
-    
+
     %% Storage layers
     Backend <-->|Document Persistence| Postgres[(PostgreSQL DB)]
     Backend <-->|Presence & Session Cache| Redis[(Redis Cache)]
-    
+
     classDef browser fill:#f9f,stroke:#333,stroke-width:2px;
     classDef container fill:#bbf,stroke:#333,stroke-width:1px;
     classDef db fill:#bfb,stroke:#333,stroke-width:1px;
@@ -43,19 +43,21 @@ graph TD
 ```
 
 ### The Stack:
-*   **Frontend:** Next.js 15 (TypeScript, Tailwind CSS/Vanilla CSS, TipTap Editor, SockJS & STOMP).
-*   **Backend:** Spring Boot 3.4 (Java 21, Spring Security Resource Server, WebSockets STOMP, JPA/Hibernate).
-*   **Databases & Cache:** 
-    *   **PostgreSQL:** Handles users, document content, and sharing permissions.
-    *   **Redis:** Handles WebSocket sessions and active presence lists.
-*   **Load Balancer:** **Nginx** routing all WebSocket and API requests to the stable backend instance (`backend_1`).
+
+- **Frontend:** Next.js 15 (TypeScript, Tailwind CSS/Vanilla CSS, TipTap Editor, SockJS & STOMP).
+- **Backend:** Spring Boot 3.4 (Java 21, Spring Security Resource Server, WebSockets STOMP, JPA/Hibernate).
+- **Databases & Cache:**
+  - **PostgreSQL:** Handles users, document content, and sharing permissions.
+  - **Redis:** Handles WebSocket sessions and active presence lists.
+- **Load Balancer:** **Nginx** routing all WebSocket and API requests to the stable backend instance (`backend_1`).
 
 ---
 
 ## 🚀 Quick Start
 
 ### Requirements:
-*   **Docker Desktop** active and running on your machine.
+
+- **Docker Desktop** active and running on your machine.
 
 ### Running the App:
 
@@ -67,19 +69,70 @@ graph TD
 
 ---
 
+## 🔐 Keycloak Setup
+
+After running `docker compose up -d --build`, Keycloak needs to be configured manually once. Open the admin panel at [**http://lvh.me:8080**](http://lvh.me:8080) and log in with `admin` / `admin`.
+
+### 1. Create a Realm
+
+1. In the top-left corner click the dropdown (shows **master**) → **Create Realm**
+2. Set **Realm name** to `docs`
+3. Click **Create**
+
+---
+
+### 2. Create a Client
+
+1. Go to **Clients** → **Create client**
+2. Fill in:
+   - **Client type:** `OpenID Connect`
+   - **Client ID:** `docs-app`
+3. Click **Next**
+4. Enable **Client authentication** → Click **Next**
+5. Set the following URLs:
+   - **Valid redirect URIs:**
+     ```
+     http://localhost/*
+     http://localhost/api/auth/callback/keycloak
+     ```
+   - **Valid post logout redirect URIs:**
+     ```
+     http://localhost/*
+     ```
+   - **Web origins:**
+     ```
+     http://localhost
+     ```
+6. Click **Save**
+7. Go to the **Credentials** tab → copy the **Client secret** and paste it into `docker-compose.yml` as `KEYCLOAK_CLIENT_SECRET`
+
+---
+
+### 3. Create Users
+
+1. Go to **Users** → **Create new user**
+2. Fill in:
+   - **Username:** `abc`
+   - **Email:** _(any email you want)_
+   - **Email verified:** toggle ON
+3. Click **Create**
+4. Go to the **Credentials** tab → **Set password**
+   - Set password to `123`, disable **Temporary**
+5. Repeat for a second user (`kasia`) so you can test collaboration
+
+---
+
 ## 🎯 Testing and Usage
 
 1.  Open your browser and go to:
     [**http://localhost/**](http://localhost/)
 2.  It will redirect you to the **Keycloak** login page (running on `lvh.me:8080`).
 3.  **Test Accounts:**
-    *   **User 1:** Username: `abc` | Password: `123`
-    *   **User 2:** Username: `kasia` | Password: `123`
+    - **User 1:** Username: `abc` | Password: `123`
+    - **User 2:** Username: `kasia` | Password: `123`
 
 4.  **How to test collaboration:**
-    *   Log in as `abc` in a normal browser tab.
-    *   Open a second tab and log in as `kasia`.
-    *   Create a document as `abc`, enter the editor, click **Share**, and enter the email of `kasia` (visible on her profile).
-    *   The document will pop up on `kasia`'s dashboard. Open it in both tabs and test writing together!
-
-
+    - Log in as `abc` in a normal browser tab.
+    - Open a second tab and log in as `kasia`.
+    - Create a document as `abc`, enter the editor, click **Share**, and enter the email of `kasia` (visible on her profile).
+    - The document will pop up on `kasia`'s dashboard. Open it in both tabs and test writing together!

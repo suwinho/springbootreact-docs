@@ -1,63 +1,71 @@
-'use client';
+"use client";
 
-import { signOut, useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import useSWR, { mutate } from 'swr';
-import DocumentCard from '@/components/DocumentCard';
-import styles from './dashboard.module.css';
+import { signOut, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import useSWR, { mutate } from "swr";
+import DocumentCard from "@/components/DocumentCard";
+import styles from "./dashboard.module.css";
 
 const fetcher = async (url: string, token?: string) => {
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   };
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
   const res = await fetch(url, { headers });
-  if (!res.ok) throw new Error('Failed to fetch data');
+  if (!res.ok) throw new Error("Failed to fetch data");
   return res.json();
 };
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  
+  const [shareRole, setShareRole] = useState<"EDITOR" | "VIEWER">("VIEWER");
   const accessToken = (session as any)?.accessToken;
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'active' | 'idle'>('all');
-  
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filter, setFilter] = useState<"all" | "active" | "idle">("all");
+
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareDocId, setShareDocId] = useState<string | null>(null);
-  const [shareEmail, setShareEmail] = useState('');
+  const [shareEmail, setShareEmail] = useState("");
   const [shareLoading, setShareLoading] = useState(false);
 
-  const { data: rawDocuments, error, isLoading } = useSWR(
-    accessToken ? ['/api/documents', accessToken] : null,
-    ([url, token]) => fetcher(url, token)
+  const {
+    data: rawDocuments,
+    error,
+    isLoading,
+  } = useSWR(
+    accessToken ? ["/api/documents", accessToken] : null,
+    ([url, token]) => fetcher(url, token),
   );
 
-  const documents = (Array.isArray(rawDocuments)
-    ? rawDocuments
-    : (rawDocuments && Array.isArray((rawDocuments as any).content) ? (rawDocuments as any).content : [])
+  const documents = (
+    Array.isArray(rawDocuments)
+      ? rawDocuments
+      : rawDocuments && Array.isArray((rawDocuments as any).content)
+        ? (rawDocuments as any).content
+        : []
   ).map((doc: any) => ({
     id: doc.id,
-    title: doc.title || 'Untitled',
+    title: doc.title || "Untitled",
     lastModified: doc.updatedAt || doc.createdAt || new Date().toISOString(),
     editors: doc.editors || [],
-    size: doc.size || '0 KB',
-    status: doc.status || 'idle',
-    ownerUsername: doc.owner?.username || doc.ownerUsername || 'Unknown',
+    size: doc.size || "0 KB",
+    status: doc.status || "idle",
+    ownerUsername: doc.owner?.username || doc.ownerUsername || "Unknown",
+    myRole: doc.myRole,
   }));
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
+    if (status === "unauthenticated") {
+      router.push("/login");
     }
   }, [status, router]);
 
-  if (status === 'loading' || (isLoading && !documents.length)) {
+  if (status === "loading" || (isLoading && !documents.length)) {
     return (
       <div className={styles.loadingScreen}>
         <div className={styles.loadingSpinner} />
@@ -66,75 +74,81 @@ export default function DashboardPage() {
     );
   }
 
-  const userName = session?.user?.name ?? session?.user?.email ?? 'User';
+  const userName = session?.user?.name ?? session?.user?.email ?? "User";
   const userInitials = userName
-    .split(' ')
+    .split(" ")
     .map((n: string) => n[0])
-    .join('')
+    .join("")
     .toUpperCase()
     .slice(0, 2);
 
-  const activeCount = documents.filter((d: any) => d.status === 'active').length;
+  const activeCount = documents.filter(
+    (d: any) => d.status === "active",
+  ).length;
 
   const filteredDocs = documents.filter((doc: any) => {
-    const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filter === 'all' || doc.status === filter;
+    const matchesSearch = doc.title
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    const matchesFilter = filter === "all" || doc.status === filter;
     return matchesSearch && matchesFilter;
   });
 
   const handleCreateDocument = async () => {
     const newDoc = {
       id: Date.now().toString(),
-      title: 'New Document',
+      title: "New Document",
       lastModified: new Date().toISOString(),
       editors: [],
-      size: '0 KB',
-      status: 'idle',
+      size: "0 KB",
+      status: "idle",
     };
 
-    mutate(['/api/documents', accessToken], [newDoc, ...documents], false);
+    mutate(["/api/documents", accessToken], [newDoc, ...documents], false);
 
     try {
-      await fetch('/api/documents', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+      await fetch("/api/documents", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
-        body: JSON.stringify({ title: 'New Document' }),
+        body: JSON.stringify({ title: "New Document" }),
       });
-      mutate(['/api/documents', accessToken]);
+      mutate(["/api/documents", accessToken]);
     } catch (e) {
-      mutate(['/api/documents', accessToken]);
+      mutate(["/api/documents", accessToken]);
     }
   };
 
   const handleShareSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!shareDocId || !shareEmail) return;
-    
+
     setShareLoading(true);
     try {
       const res = await fetch(`/api/documents/${shareDocId}/share`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
-        body: JSON.stringify({ email: shareEmail, role: 'EDITOR' }),
+        body: JSON.stringify({ email: shareEmail, role: shareRole }),
       });
       if (!res.ok) {
         if (res.status === 400) {
-          throw new Error('User not found with this email (the user must log in at least once to be registered in the database).');
+          throw new Error(
+            "User not found with this email (the user must log in at least once to be registered in the database).",
+          );
         } else {
-          throw new Error('Server returned an error while sharing.');
+          throw new Error("Server returned an error while sharing.");
         }
       }
       alert(`Document shared with: ${shareEmail}`);
       setShareModalOpen(false);
-      setShareEmail('');
+      setShareEmail("");
     } catch (err: any) {
-      alert(err.message || 'Error while sharing.');
+      alert(err.message || "Error while sharing.");
     } finally {
       setShareLoading(false);
     }
@@ -151,7 +165,12 @@ export default function DashboardPage() {
         <div className={styles.sidebarLogo}>
           <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
             <rect width="32" height="32" rx="10" fill="url(#sideGrad)" />
-            <path d="M9 10h14M9 16h10M9 22h12" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+            <path
+              d="M9 10h14M9 16h10M9 22h12"
+              stroke="white"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
             <defs>
               <linearGradient id="sideGrad" x1="0" y1="0" x2="32" y2="32">
                 <stop stopColor="#6366f1" />
@@ -163,12 +182,22 @@ export default function DashboardPage() {
         </div>
 
         <nav className={styles.sidebarNav}>
-          <a href="#" id="nav-dashboard" className={`${styles.navItem} ${styles.navItemActive}`}>
+          <a
+            href="#"
+            id="nav-dashboard"
+            className={`${styles.navItem} ${styles.navItemActive}`}
+          >
             Dashboard
           </a>
-          <a href="#" id="nav-documents" className={styles.navItem}>My Documents</a>
-          <a href="#" id="nav-shared" className={styles.navItem}>Shared</a>
-          <a href="#" id="nav-recent" className={styles.navItem}>Recent</a>
+          <a href="#" id="nav-documents" className={styles.navItem}>
+            My Documents
+          </a>
+          <a href="#" id="nav-shared" className={styles.navItem}>
+            Shared
+          </a>
+          <a href="#" id="nav-recent" className={styles.navItem}>
+            Recent
+          </a>
         </nav>
 
         <div className={styles.sidebarFooter}>
@@ -182,7 +211,7 @@ export default function DashboardPage() {
           <button
             id="logout-btn"
             className={styles.logoutBtn}
-            onClick={() => signOut({ callbackUrl: '/login' })}
+            onClick={() => signOut({ callbackUrl: "/login" })}
             title="Log out"
           >
             Log out
@@ -196,7 +225,11 @@ export default function DashboardPage() {
             <h1 className={styles.headerTitle}>Dashboard</h1>
             <p className={styles.headerSubtitle}>Manage your documents</p>
           </div>
-          <button id="new-doc-btn" className={styles.newDocBtn} onClick={handleCreateDocument}>
+          <button
+            id="new-doc-btn"
+            className={styles.newDocBtn}
+            onClick={handleCreateDocument}
+          >
             New document
           </button>
         </header>
@@ -207,12 +240,17 @@ export default function DashboardPage() {
             <span className={styles.statLabel}>Total documents</span>
           </div>
           <div className={styles.statCard}>
-            <span className={`${styles.statValue} ${styles.statActive}`}>{activeCount}</span>
+            <span className={`${styles.statValue} ${styles.statActive}`}>
+              {activeCount}
+            </span>
             <span className={styles.statLabel}>Actively edited</span>
           </div>
           <div className={styles.statCard}>
             <span className={styles.statValue}>
-              {documents.reduce((sum: number, d: any) => sum + (d.editors?.length || 0), 0)}
+              {documents.reduce(
+                (sum: number, d: any) => sum + (d.editors?.length || 0),
+                0,
+              )}
             </span>
             <span className={styles.statLabel}>Active users</span>
           </div>
@@ -220,9 +258,9 @@ export default function DashboardPage() {
 
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Your documents</h2>
-          
+
           <div className={styles.controlsRow}>
-            <input 
+            <input
               type="text"
               placeholder="Search documents..."
               value={searchQuery}
@@ -230,40 +268,58 @@ export default function DashboardPage() {
               className={styles.searchInput}
             />
             <div className={styles.filterRow}>
-              <button 
-                id="filter-all" 
-                className={`${styles.filterBtn} ${filter === 'all' ? styles.filterActive : ''}`}
-                onClick={() => setFilter('all')}
-              >All</button>
-              <button 
-                id="filter-active" 
-                className={`${styles.filterBtn} ${filter === 'active' ? styles.filterActive : ''}`}
-                onClick={() => setFilter('active')}
-              >Active</button>
-              <button 
-                id="filter-idle" 
-                className={`${styles.filterBtn} ${filter === 'idle' ? styles.filterActive : ''}`}
-                onClick={() => setFilter('idle')}
-              >Inactive</button>
+              <button
+                id="filter-all"
+                className={`${styles.filterBtn} ${filter === "all" ? styles.filterActive : ""}`}
+                onClick={() => setFilter("all")}
+              >
+                All
+              </button>
+              <button
+                id="filter-active"
+                className={`${styles.filterBtn} ${filter === "active" ? styles.filterActive : ""}`}
+                onClick={() => setFilter("active")}
+              >
+                Active
+              </button>
+              <button
+                id="filter-idle"
+                className={`${styles.filterBtn} ${filter === "idle" ? styles.filterActive : ""}`}
+                onClick={() => setFilter("idle")}
+              >
+                Inactive
+              </button>
             </div>
           </div>
         </div>
 
-        {error && <div className={styles.errorText}>An error occurred while fetching documents.</div>}
+        {error && (
+          <div className={styles.errorText}>
+            An error occurred while fetching documents.
+          </div>
+        )}
 
         <div className={styles.documentGrid}>
           {filteredDocs.map((doc: any) => (
             <div key={doc.id} className={styles.cardWrapper}>
-              <DocumentCard document={doc} token={accessToken} onRenamed={() => mutate(['/api/documents', accessToken])} />
-              <button 
-                onClick={() => openShareModal(doc.id)}
-                className={styles.shareBtn}
-              >
-                Share
-              </button>
+              <DocumentCard
+                document={doc}
+                token={accessToken}
+                onRenamed={() => mutate(["/api/documents", accessToken])}
+              />
+              {doc.myRole === "OWNER" && (
+                <button
+                  onClick={() => openShareModal(doc.id)}
+                  className={styles.shareBtn}
+                >
+                  Share
+                </button>
+              )}
             </div>
           ))}
-          {filteredDocs.length === 0 && <p>No documents matching the criteria.</p>}
+          {filteredDocs.length === 0 && (
+            <p>No documents matching the criteria.</p>
+          )}
         </div>
       </main>
 
@@ -274,25 +330,42 @@ export default function DashboardPage() {
             <form onSubmit={handleShareSubmit}>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>User email</label>
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   required
                   value={shareEmail}
                   onChange={(e) => setShareEmail(e.target.value)}
                   className={styles.formInput}
                 />
               </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Role</label>
+                <select
+                  value={shareRole}
+                  onChange={(e) =>
+                    setShareRole(e.target.value as "EDITOR" | "VIEWER")
+                  }
+                  className={styles.formInput}
+                >
+                  <option value="VIEWER">Viewer (read only)</option>
+                  <option value="EDITOR">Editor (can edit)</option>
+                </select>
+              </div>
               <div className={styles.formActions}>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setShareModalOpen(false)}
                   className={styles.cancelBtn}
-                >Cancel</button>
-                <button 
-                  type="submit" 
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
                   disabled={shareLoading}
                   className={styles.submitBtn}
-                >{shareLoading ? 'Sending...' : 'Share'}</button>
+                >
+                  {shareLoading ? "Sending..." : "Share"}
+                </button>
               </div>
             </form>
           </div>

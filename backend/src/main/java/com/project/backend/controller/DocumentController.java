@@ -1,6 +1,7 @@
 package com.project.backend.controller;
 
 import com.nimbusds.jose.proc.SecurityContext;
+import com.project.backend.config.DocumentRole;
 import com.project.backend.dto.DocumentDTO;
 import com.project.backend.model.Document;
 import com.project.backend.model.DocumentPermission;
@@ -12,6 +13,7 @@ import com.project.backend.service.UserSyncService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +30,7 @@ import org.springframework.data.domain.Pageable;
 
 import lombok.RequiredArgsConstructor;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -35,16 +38,18 @@ import java.util.UUID;
 @RequestMapping("/api/documents")
 public class DocumentController {
  
+    private final JwtAuthenticationConverter jwtAuthenticationConverter;
     private final UserRepository userRepository;
     private final UserSyncService userSyncService;
     private final DocumentRepository documentRepository;
     private final DocumentPermissionRepository documentPermissionRepository;
 
-    public DocumentController(UserSyncService userSyncService, UserRepository userRepository, DocumentRepository documentRepository, DocumentPermissionRepository documentPermissionRepository) {
+    public DocumentController(UserSyncService userSyncService, UserRepository userRepository, DocumentRepository documentRepository, DocumentPermissionRepository documentPermissionRepository, JwtAuthenticationConverter jwtAuthenticationConverter) {
         this.userSyncService = userSyncService;
         this.userRepository = userRepository;
         this.documentRepository = documentRepository;
         this.documentPermissionRepository = documentPermissionRepository;
+        this.jwtAuthenticationConverter = jwtAuthenticationConverter;
     }
 
     @GetMapping
@@ -53,13 +58,27 @@ public class DocumentController {
         JwtAuthenticationToken jwtToken = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
         UUID ownerId = UUID.fromString(jwtToken.getToken().getSubject());
         Page<Document> docsList = documentRepository.findOwnedOrShared(ownerId, PageRequest.of(page,size));
-        Page<DocumentDTO> dtoPage = docsList.map(doc -> new DocumentDTO(
-            doc.getId(),
-            doc.getTitle(),
-            doc.getOwner() != null ? doc.getOwner().getUsername() : "Unknown",
-            doc.getCreatedAt(),
-            doc.getUpdatedAt()
-        ));
+        Page<DocumentDTO> dtoPage = docsList.map(doc ->{
+            String myRole;
+            if (doc.getOwner() != null && doc.getOwner().getId().equals(ownerId)) {
+                myRole = "OWNER";
+            } else {
+                myRole = documentPermissionRepository
+                    .findByDocumentIdAndUserId(doc.getId(), ownerId)
+                    .map(DocumentPermission::getRole)
+                    .orElse("VIEWER");
+            }
+            return new DocumentDTO(
+                doc.getId(),
+                doc.getTitle(),
+                doc.getOwner().getUsername(),
+                doc.getCreatedAt(),
+                doc.getUpdatedAt(),
+                myRole
+            );
+        }
+
+        );
         return ResponseEntity.ok(dtoPage);
     }
 
@@ -122,14 +141,42 @@ public class DocumentController {
             return ResponseEntity.badRequest().build();
         }
 
-        DocumentPermission perms = new DocumentPermission();
+        DocumentRole roleToGive;
+        try {
+            roleToGive = DocumentRole.valueOf(request.role().toUpperCase());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Invalid role, it's either VIEWER or EDITOR");
+        }
+
+        DocumentPermission perms = documentPermissionRepository
+            .findByDocumentIdAndUserId(id, user.get().getId())
+            .orElse(new DocumentPermission());
         perms.setUserId(user.get().getId());
         perms.setDocumentId(id);
-        perms.setRole(request.role());
+        perms.setRole(roleToGive.name());
         documentPermissionRepository.save(perms);
 
         return ResponseEntity.ok().build();
         
+    }
+
+
+    @GetMapping("/{id}/my-role")
+    public ResponseEntity<Map<String,String>> getUserRole(@PathVariable UUID id) {
+        JwtAuthenticationToken jwt = (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        UUID userId = UUID.fromString(jwt.getToken().getSubject());
+        return documentRepository.findById(id).map(doc -> {
+            String role;
+            if (doc.getOwner().getId().equals(userId)) {
+                role = "OWNER";
+            } else {
+                role = documentPermissionRepository
+                    .findByDocumentIdAndUserId(id, userId)
+                    .map(DocumentPermission::getRole)
+                    .orElse("NONE");
+            }
+            return ResponseEntity.ok(Map.of("role", role));
+        }).orElse(ResponseEntity.notFound().build());
     }
 
 

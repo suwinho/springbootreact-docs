@@ -7,25 +7,35 @@ import styles from "./editor.module.css";
 interface EditorProps {
   documentId: string;
   token: string;
+  readOnly: boolean;
 }
 
-export default function Editor({ documentId, token }: EditorProps) {
+export default function Editor({
+  documentId,
+  token,
+  readOnly = false,
+}: EditorProps) {
   const { yDoc, connected, onlineUsers } = useDocumentWS(documentId, token);
 
   const editor = useEditor({
     extensions: [
-        StarterKit.configure({
-            undoRedo: false,
-        }),
-        Collaboration.configure({
-            document: yDoc,
+      StarterKit.configure({
+        undoRedo: false,
+      }),
+      Collaboration.configure({
+        document: yDoc,
       }),
     ],
+    editable: !readOnly,
   });
   return (
     <div className={styles.container}>
       <div className={styles.statusBar}>
-        <div className={connected ? styles.statusConnected : styles.statusDisconnected}>
+        <div
+          className={
+            connected ? styles.statusConnected : styles.statusDisconnected
+          }
+        >
           {connected ? "🟢 Connected to server" : "🔴 Connecting..."}
         </div>
         <div>
