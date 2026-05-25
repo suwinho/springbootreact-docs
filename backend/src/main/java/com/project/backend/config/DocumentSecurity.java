@@ -31,9 +31,9 @@ public class DocumentSecurity {
 
         UUID userId = UUID.fromString(auth.getToken().getSubject());
         return documentPermissionRepository.findByDocumentIdAndUserId(documentId, userId)
-                .map(perm -> perm.getRole().equals(requiredRole) 
-                          || (requiredRole.equals("VIEWER") && perm.getRole().equals("EDITOR"))) 
-                .orElse(false);
+            .filter(perm -> !Boolean.TRUE.equals(perm.getIsBanned())) 
+            .map(perm -> perm.getRole().equals(requiredRole) || (requiredRole.equals("VIEWER") && perm.getRole().equals("EDITOR")))
+            .orElse(false);
     }
 
 }

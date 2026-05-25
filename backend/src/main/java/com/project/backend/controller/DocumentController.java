@@ -3,6 +3,7 @@ package com.project.backend.controller;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.project.backend.config.DocumentRole;
 import com.project.backend.dto.DocumentDTO;
+import com.project.backend.dto.DocumentMemberDTO;
 import com.project.backend.model.Document;
 import com.project.backend.model.DocumentPermission;
 import com.project.backend.model.User;
@@ -10,6 +11,8 @@ import com.project.backend.repository.DocumentPermissionRepository;
 import com.project.backend.repository.DocumentRepository;
 import com.project.backend.repository.UserRepository;
 import com.project.backend.service.UserSyncService;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,11 +27,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import lombok.RequiredArgsConstructor;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -177,6 +183,49 @@ public class DocumentController {
             }
             return ResponseEntity.ok(Map.of("role", role));
         }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{id}/members")
+    @PreAuthorize("@docSecurity.isOwner(#id, authentication)")
+    public ResponseEntity<List<DocumentMemberDTO>> getMembers(@PathVariable UUID id) {
+        Document doc = documentRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        List<DocumentMemberDTO> members = new ArrayList<>();
+
+        User owner = doc.getOwner();
+        members.add(new DocumentMemberDTO(
+            owner.getId(), owner.getUsername(), owner.getEmail(), owner.getDisplayName(), "OWNER", false
+        ));
+        List<DocumentPermission> perms = documentPermissionRepository.findByDocumentId(id);
+        for (DocumentPermission perm : perms) {
+            userRepository.findById(perm.getUserId()).ifPresent(user -> members.add( new DocumentMemberDTO( 
+                user.getId(), user.getUsername(), user.getEmail(), user.getDisplayName(), perm.getRole(), perm.getIsBanned()
+            )));
+        }
+        return ResponseEntity.ok(members);
+    }
+
+    @PostMapping("/{id}/members/{userId}/ban")
+    @PreAuthorize("@docSecurity.isOwner(#id, authentication)")
+    public ResponseEntity<?> banMember(@PathVariable UUID id, @PathVariable UUID userId) {
+        return documentPermissionRepository.findByDocumentIdAndUserId(id, userId)
+            .map(perm -> {
+                perm.setIsBanned(true);
+                documentPermissionRepository.save(perm);
+                return ResponseEntity.ok().build();
+            })
+            .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/{id}/members/{userId}/unban")
+    @PreAuthorize("@docSecurity.isOwner(#id, authentication)")
+    public ResponseEntity<?> unbanMember(@PathVariable UUID id, @PathVariable UUID userId) {
+        return documentPermissionRepository.findByDocumentIdAndUserId(id, userId)
+            .map(perm -> {
+                perm.setIsBanned(false);
+                documentPermissionRepository.save(perm);
+                return ResponseEntity.ok().build();
+            })
+            .orElse(ResponseEntity.notFound().build());
     }
 
 
