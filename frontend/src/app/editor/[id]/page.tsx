@@ -3,7 +3,8 @@
 import { useParams, useRouter } from "next/navigation";
 import styles from "./editor.module.css";
 import Editor from "@/components/Editor";
-import { signOut, useSession } from "next-auth/react";
+import MembersPanel from "@/components/MembersPanel";
+import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 
 export default function EditorPage() {
@@ -14,15 +15,46 @@ export default function EditorPage() {
   const accessToken = (session as any)?.accessToken;
 
   useEffect(() => {
-    fetch(`/api/document/${id}/my-role`, {
+    if (status === "unauthenticated") {
+      router.push("/login");
+      return;
+    }
+    if (status === "loading" || !accessToken || !id) return;
+
+    fetch(`/api/documents/${id}/my-role`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
-      .then((res) => res.json())
-      .then((data) => setMyRole(data.role))
-      .catch(() => setMyRole("VIEWER"));
-  }, [id, accessToken]);
+      .then((res) => {
+        if (!res.ok) {
+          router.push("/dashboard");
+          return;
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (data) {
+          if (data.role === "NONE") {
+            router.push("/dashboard");
+          } else {
+            setMyRole(data.role);
+          }
+        }
+      })
+      .catch(() => {
+        router.push("/dashboard");
+      });
+  }, [id, accessToken, status, router]);
 
   const isReadOnly = myRole === "VIEWER";
+
+  if (status === "loading" || myRole === null) {
+    return (
+      <div className={styles.loadingScreen}>
+        <div className={styles.loadingSpinner} />
+        <p>Loading document...</p>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>
@@ -45,7 +77,7 @@ export default function EditorPage() {
           <span className={styles.editorDot} />
           Connected
         </div>
-      </div>
+        </div>
 
       <div className={styles.placeholder}>
         <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
@@ -68,6 +100,13 @@ export default function EditorPage() {
           <Editor readOnly={isReadOnly} documentId={id} token={accessToken} />
         </div>
       </div>
+
+      {myRole === "OWNER" && (
+        <MembersPanel
+          documentId={id}
+          token={accessToken}
+        />
+      )}
     </div>
   );
 }

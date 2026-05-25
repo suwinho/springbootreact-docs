@@ -24,10 +24,12 @@ public class WebSocketConfiguration implements WebSocketMessageBrokerConfigurer 
     
     private final JwtDecoder jwtDecoder;
     private final JwtAuthenticationConverter jwtAuthenticationConverter;
+    private final DocumentSecurity docSecurity;
 
-    public WebSocketConfiguration(JwtDecoder jwtDecoder, JwtAuthenticationConverter jwtAuthenticationConverter) {
+    public WebSocketConfiguration(JwtDecoder jwtDecoder, JwtAuthenticationConverter jwtAuthenticationConverter, DocumentSecurity docSecurity) {
         this.jwtDecoder = jwtDecoder;
         this.jwtAuthenticationConverter = jwtAuthenticationConverter;
+        this.docSecurity = docSecurity;
     }
 
     @Override
@@ -58,6 +60,27 @@ public class WebSocketConfiguration implements WebSocketMessageBrokerConfigurer 
                             accessor.setUser(auth);
                         } catch (Exception e) {
                             throw new MessageDeliveryException("Invalid token");
+                        }
+                    }
+                } else if (accessor.getCommand() == StompCommand.SUBSCRIBE) {
+                    String destination = accessor.getDestination();
+                    if (destination != null && destination.startsWith("/topic/doc/")) {
+                        String docIdStr = destination.replace("/topic/doc/", "");
+                        if (docIdStr.endsWith("/presence")) {
+                            docIdStr = docIdStr.replace("/presence", "");
+                        }
+                        try {
+                            java.util.UUID docId = java.util.UUID.fromString(docIdStr);
+                            Authentication auth = (Authentication) accessor.getUser();
+                            if (auth instanceof org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken jwtAuth) {
+                                if (!docSecurity.hasRole(docId, "VIEWER", jwtAuth)) {
+                                    throw new MessageDeliveryException("Access denied: You do not have permission to access this document");
+                                }
+                            } else {
+                                throw new MessageDeliveryException("Unauthorized");
+                            }
+                        } catch (Exception e) {
+                            throw new MessageDeliveryException("Access denied");
                         }
                     }
                 }

@@ -178,6 +178,7 @@ public class DocumentController {
             } else {
                 role = documentPermissionRepository
                     .findByDocumentIdAndUserId(id, userId)
+                    .filter(perm -> !Boolean.TRUE.equals(perm.getIsBanned()))
                     .map(DocumentPermission::getRole)
                     .orElse("NONE");
             }
@@ -228,5 +229,23 @@ public class DocumentController {
             .orElse(ResponseEntity.notFound().build());
     }
 
+
+    @PutMapping("/{id}/members/{userId}/role")
+    @PreAuthorize("@docSecurity.isOwner(#id, authentication)")
+    public ResponseEntity<?> changeMemberRole(@PathVariable UUID id, @PathVariable UUID userId, @RequestBody Map<String, String> body) {
+        String newRole = body.get("role");
+        try {
+            DocumentRole.valueOf(newRole.toUpperCase());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Invalid role");
+        }
+        return documentPermissionRepository.findByDocumentIdAndUserId(id, userId)
+            .map(perm -> {
+                perm.setRole(newRole.toUpperCase());
+                documentPermissionRepository.save(perm);
+                return ResponseEntity.ok().build();
+            })
+            .orElse(ResponseEntity.notFound().build());
+    }
 
 }
