@@ -4,15 +4,12 @@ import { useRouter } from "next/navigation";
 import styles from "./DocumentCard.module.css";
 import { useState } from "react";
 
-export type DocumentStatus = "active" | "idle";
-
 export interface DocumentMeta {
   id: string;
   title: string;
   lastModified: string;
   editors: string[];
   size: string;
-  status: DocumentStatus;
   ownerUsername: string;
   myRole: "OWNER" | "EDITOR" | "VIEWER";
 }
@@ -21,6 +18,7 @@ interface Props {
   document: DocumentMeta;
   token: string;
   onRenamed?: () => void;
+  onDeleted?: () => void;
 }
 
 function formatDate(iso: string): string {
@@ -38,10 +36,29 @@ export default function DocumentCard({
   document: doc,
   token,
   onRenamed,
+  onDeleted,
 }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [titleValue, setTitleValue] = useState(doc.title);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`Are you sure you want to delete "${doc.title}"?`)) return;
+    setDeleting(true);
+    try {
+      await fetch(`/api/documents/${doc.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      onDeleted?.();
+    } catch {
+      alert("Failed to delete the document.");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleRenameBlur = async () => {
     setEditing(false);
@@ -144,18 +161,19 @@ export default function DocumentCard({
               </button>
             </div>
           )}
-          <span
-            className={`${styles.statusBadge} ${doc.status === "active" ? styles.statusActive : styles.statusIdle}`}
-          >
-            {doc.status === "active" ? (
-              <>
-                <span className={styles.statusDot} />
-                Active
-              </>
-            ) : (
-              "Inactive"
-            )}
-          </span>
+          {doc.myRole === "OWNER" && (
+            <button
+              id={`delete-doc-${doc.id}`}
+              className={styles.deleteBtn}
+              title="Delete document"
+              disabled={deleting}
+              onClick={handleDelete}
+            >
+              <svg viewBox="0 0 16 16" fill="currentColor" width="13" height="13">
+                <path d="M11 1.75V3h2.25a.75.75 0 010 1.5H2.75a.75.75 0 010-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75zM4.496 6.675l.66 6.6a.25.25 0 00.249.225h5.19a.25.25 0 00.249-.225l.66-6.6a.75.75 0 011.492.149l-.66 6.6A1.748 1.748 0 0110.595 15h-5.19a1.75 1.75 0 01-1.741-1.575l-.66-6.6a.75.75 0 111.492-.15zM6.5 1.75V3h3V1.75a.25.25 0 00-.25-.25h-2.5a.25.25 0 00-.25.25z" />
+              </svg>
+            </button>
+          )}
         </div>
 
         <p className={styles.meta}>Modified: {formatDate(doc.lastModified)}</p>

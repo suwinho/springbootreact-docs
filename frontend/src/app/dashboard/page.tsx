@@ -26,7 +26,6 @@ export default function DashboardPage() {
   const accessToken = (session as any)?.accessToken;
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<"all" | "active" | "idle">("all");
 
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareDocId, setShareDocId] = useState<string | null>(null);
@@ -54,7 +53,6 @@ export default function DashboardPage() {
     lastModified: doc.updatedAt || doc.createdAt || new Date().toISOString(),
     editors: doc.editors || [],
     size: doc.size || "0 KB",
-    status: doc.status || "idle",
     ownerUsername: doc.owner?.username || doc.ownerUsername || "Unknown",
     myRole: doc.myRole,
   }));
@@ -83,15 +81,11 @@ export default function DashboardPage() {
     .slice(0, 2);
 
   const activeCount = documents.filter(
-    (d: any) => d.status === "active",
+    (d: any) => d.editors?.length > 0,
   ).length;
 
   const filteredDocs = documents.filter((doc: any) => {
-    const matchesSearch = doc.title
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    const matchesFilter = filter === "all" || doc.status === filter;
-    return matchesSearch && matchesFilter;
+    return doc.title.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
   const handleCreateDocument = async () => {
@@ -267,29 +261,6 @@ export default function DashboardPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className={styles.searchInput}
             />
-            <div className={styles.filterRow}>
-              <button
-                id="filter-all"
-                className={`${styles.filterBtn} ${filter === "all" ? styles.filterActive : ""}`}
-                onClick={() => setFilter("all")}
-              >
-                All
-              </button>
-              <button
-                id="filter-active"
-                className={`${styles.filterBtn} ${filter === "active" ? styles.filterActive : ""}`}
-                onClick={() => setFilter("active")}
-              >
-                Active
-              </button>
-              <button
-                id="filter-idle"
-                className={`${styles.filterBtn} ${filter === "idle" ? styles.filterActive : ""}`}
-                onClick={() => setFilter("idle")}
-              >
-                Inactive
-              </button>
-            </div>
           </div>
         </div>
 
@@ -306,6 +277,7 @@ export default function DashboardPage() {
                 document={doc}
                 token={accessToken}
                 onRenamed={() => mutate(["/api/documents", accessToken])}
+                onDeleted={() => mutate(["/api/documents", accessToken])}
               />
               {doc.myRole === "OWNER" && (
                 <button
