@@ -5,43 +5,34 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import useSWR, { mutate } from "swr";
 import DocumentCard from "@/components/DocumentCard";
-import styles from "./dashboard.module.css";
+import styles from "../dashboard.module.css";
 
 const fetcher = async (url: string, token?: string) => {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(url, { headers });
   if (!res.ok) throw new Error("Failed to fetch data");
   return res.json();
 };
 
-export default function DashboardPage() {
+export default function MyDocumentsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [shareRole, setShareRole] = useState<"EDITOR" | "VIEWER">("VIEWER");
   const accessToken = (session as any)?.accessToken;
-
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [shareRole, setShareRole] = useState<"EDITOR" | "VIEWER">("VIEWER");
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareDocId, setShareDocId] = useState<string | null>(null);
   const [shareEmail, setShareEmail] = useState("");
   const [shareLoading, setShareLoading] = useState(false);
 
-  const {
-    data: rawDocuments,
-    error,
-    isLoading,
-  } = useSWR(
+  const { data: rawDocuments, error, isLoading } = useSWR(
     accessToken ? ["/api/documents", accessToken] : null,
     ([url, token]) => fetcher(url, token),
   );
 
-  const documents = (
+  const allDocuments = (
     Array.isArray(rawDocuments)
       ? rawDocuments
       : rawDocuments && Array.isArray((rawDocuments as any).content)
@@ -57,13 +48,13 @@ export default function DashboardPage() {
     myRole: doc.myRole,
   }));
 
+  const documents = allDocuments.filter((doc: any) => doc.myRole === "OWNER");
+
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login");
-    }
+    if (status === "unauthenticated") router.push("/login");
   }, [status, router]);
 
-  if (status === "loading" || (isLoading && !documents.length)) {
+  if (status === "loading" || (isLoading && !allDocuments.length)) {
     return (
       <div className={styles.loadingScreen}>
         <div className={styles.loadingSpinner} />
@@ -72,26 +63,11 @@ export default function DashboardPage() {
     );
   }
 
-  const activeCount = documents.filter(
-    (d: any) => d.editors?.length > 0,
-  ).length;
-
-  const filteredDocs = documents.filter((doc: any) => {
-    return doc.title.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const filteredDocs = documents.filter((doc: any) =>
+    doc.title.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
 
   const handleCreateDocument = async () => {
-    const newDoc = {
-      id: Date.now().toString(),
-      title: "New Document",
-      lastModified: new Date().toISOString(),
-      editors: [],
-      size: "0 KB",
-      status: "idle",
-    };
-
-    mutate(["/api/documents", accessToken], [newDoc, ...documents], false);
-
     try {
       await fetch("/api/documents", {
         method: "POST",
@@ -110,7 +86,6 @@ export default function DashboardPage() {
   const handleShareSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!shareDocId || !shareEmail) return;
-
     setShareLoading(true);
     try {
       const res = await fetch(`/api/documents/${shareDocId}/share`, {
@@ -122,13 +97,8 @@ export default function DashboardPage() {
         body: JSON.stringify({ email: shareEmail, role: shareRole }),
       });
       if (!res.ok) {
-        if (res.status === 400) {
-          throw new Error(
-            "User not found with this email (the user must log in at least once to be registered in the database).",
-          );
-        } else {
-          throw new Error("Server returned an error while sharing.");
-        }
+        if (res.status === 400) throw new Error("User not found with this email.");
+        throw new Error("Server returned an error while sharing.");
       }
       alert(`Document shared with: ${shareEmail}`);
       setShareModalOpen(false);
@@ -140,52 +110,23 @@ export default function DashboardPage() {
     }
   };
 
-  const openShareModal = (id: string) => {
-    setShareDocId(id);
-    setShareModalOpen(true);
-  };
-
   return (
     <>
       <main className={styles.main}>
         <header className={styles.header}>
           <div>
-            <h1 className={styles.headerTitle}>Dashboard</h1>
-            <p className={styles.headerSubtitle}>Manage your documents</p>
+            <h1 className={styles.headerTitle}>My Documents</h1>
+            <p className={styles.headerSubtitle}>Documents you own and created</p>
           </div>
-          <button
-            id="new-doc-btn"
-            className={styles.newDocBtn}
-            onClick={handleCreateDocument}
-          >
+          <button id="new-doc-btn" className={styles.newDocBtn} onClick={handleCreateDocument}>
             New document
           </button>
         </header>
 
-        <div className={styles.statsRow}>
-          <div className={styles.statCard}>
-            <span className={styles.statValue}>{documents.length}</span>
-            <span className={styles.statLabel}>Total documents</span>
-          </div>
-          <div className={styles.statCard}>
-            <span className={`${styles.statValue} ${styles.statActive}`}>
-              {activeCount}
-            </span>
-            <span className={styles.statLabel}>Actively edited</span>
-          </div>
-          <div className={styles.statCard}>
-            <span className={styles.statValue}>
-              {documents.reduce(
-                (sum: number, d: any) => sum + (d.editors?.length || 0),
-                0,
-              )}
-            </span>
-            <span className={styles.statLabel}>Active users</span>
-          </div>
-        </div>
-
         <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Your documents</h2>
+          <h2 className={styles.sectionTitle}>
+            {documents.length} document{documents.length !== 1 ? "s" : ""}
+          </h2>
           <div className={styles.controlsRow}>
             <input
               type="text"
@@ -197,11 +138,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {error && (
-          <div className={styles.errorText}>
-            An error occurred while fetching documents.
-          </div>
-        )}
+        {error && <div className={styles.errorText}>An error occurred while fetching documents.</div>}
 
         <div className={styles.documentGrid}>
           {filteredDocs.map((doc: any) => (
@@ -212,18 +149,16 @@ export default function DashboardPage() {
                 onRenamed={() => mutate(["/api/documents", accessToken])}
                 onDeleted={() => mutate(["/api/documents", accessToken])}
               />
-              {doc.myRole === "OWNER" && (
-                <button
-                  onClick={() => openShareModal(doc.id)}
-                  className={styles.shareBtn}
-                >
-                  Share
-                </button>
-              )}
+              <button
+                onClick={() => { setShareDocId(doc.id); setShareModalOpen(true); }}
+                className={styles.shareBtn}
+              >
+                Share
+              </button>
             </div>
           ))}
           {filteredDocs.length === 0 && (
-            <p>No documents matching the criteria.</p>
+            <p>No documents found. Create your first document!</p>
           )}
         </div>
       </main>
@@ -247,9 +182,7 @@ export default function DashboardPage() {
                 <label className={styles.formLabel}>Role</label>
                 <select
                   value={shareRole}
-                  onChange={(e) =>
-                    setShareRole(e.target.value as "EDITOR" | "VIEWER")
-                  }
+                  onChange={(e) => setShareRole(e.target.value as "EDITOR" | "VIEWER")}
                   className={styles.formInput}
                 >
                   <option value="VIEWER">Viewer (read only)</option>
@@ -257,18 +190,10 @@ export default function DashboardPage() {
                 </select>
               </div>
               <div className={styles.formActions}>
-                <button
-                  type="button"
-                  onClick={() => setShareModalOpen(false)}
-                  className={styles.cancelBtn}
-                >
+                <button type="button" onClick={() => setShareModalOpen(false)} className={styles.cancelBtn}>
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={shareLoading}
-                  className={styles.submitBtn}
-                >
+                <button type="submit" disabled={shareLoading} className={styles.submitBtn}>
                   {shareLoading ? "Sending..." : "Share"}
                 </button>
               </div>

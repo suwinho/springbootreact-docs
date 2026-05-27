@@ -292,6 +292,7 @@
 
 /* Loading screen */
 .loadingScreen {
+  flex: 1;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -448,4 +449,66 @@
 
 .submitBtn:hover {
   background: var(--accent-secondary);
+}
+
+/* ---- RECENT LIST ---- */
+.recentList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.recentItem {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.recentItem:hover {
+  border-color: var(--border-medium);
+  transform: translateX(2px);
+}
+
+.recentItemInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.recentItemTitle {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recentItemMeta {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.recentItemTime {
+  color: var(--text-muted);
+}
+
+.recentItemRole {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: var(--accent-primary-glow);
+  color: var(--accent-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
 }
