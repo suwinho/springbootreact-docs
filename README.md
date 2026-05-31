@@ -136,3 +136,20 @@ After running `docker compose up -d --build`, Keycloak needs to be configured ma
     - Open a second tab and log in as `kasia`.
     - Create a document as `abc`, enter the editor, click **Share**, and enter the email of `kasia` (visible on her profile).
     - The document will pop up on `kasia`'s dashboard. Open it in both tabs and test writing together!
+
+### Validation & API Checks (cURL)
+
+To verify the minimal functionality of the backend:
+
+1. **Check Backend Health:**
+   ```bash
+   curl -f http://localhost/api/actuator/health
+   ```
+   *Expected response:* `{"status":"UP"}`
+
+2. **Check Documents API (requires Bearer token):**
+   ```bash
+   # Assuming you have a valid access token (JWT) from Keycloak in your browser
+   curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost/api/documents
+   ```
+   *Expected response:* List of documents `[...]`

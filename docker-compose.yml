@@ -1,16 +1,23 @@
 services:
   backend_1:
     build: ./backend
+    image: docs-backend:1.0.0
     container_name: backend_1
+    stop_grace_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - SERVER_PORT=8081
       - SERVER_MAX_HTTP_HEADER_SIZE=65536
       - SERVER_MAX_HTTP_REQUEST_HEADER_SIZE=65536
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      - SPRING_DATASOURCE_USERNAME=user
-      - SPRING_DATASOURCE_PASSWORD=abc
-      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://lvh.me:8080/realms/docs
-      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/realms/docs/protocol/openid-connect/certs
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=${KEYCLOAK_ISSUER_URI}
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=${KEYCLOAK_JWK_SET_URI}
       - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY=DEBUG
       - SPRING_DATA_REDIS_HOST=redis
     depends_on:
@@ -36,16 +43,23 @@ services:
           memory: 256M
   backend_2:
     build: ./backend
+    image: docs-backend:1.0.0
     container_name: backend_2
+    stop_grace_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - SERVER_PORT=8081
       - SERVER_MAX_HTTP_HEADER_SIZE=65536
       - SERVER_MAX_HTTP_REQUEST_HEADER_SIZE=65536
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      - SPRING_DATASOURCE_USERNAME=user
-      - SPRING_DATASOURCE_PASSWORD=abc
-      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://lvh.me:8080/realms/docs
-      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/realms/docs/protocol/openid-connect/certs
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=${KEYCLOAK_ISSUER_URI}
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=${KEYCLOAK_JWK_SET_URI}
       - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY=DEBUG
       - SPRING_DATA_REDIS_HOST=redis
     depends_on:
@@ -71,15 +85,16 @@ services:
           memory: 256M
   frontend:
     build: ./frontend
+    image: docs-frontend:1.0.0
     container_name: frontend
     environment:
-      - AUTH_SECRET=super_duper_secret
+      - AUTH_SECRET=${AUTH_SECRET}
       - AUTH_TRUST_HOST=true
-      - KEYCLOAK_CLIENT_ID=docs-app
-      - KEYCLOAK_CLIENT_SECRET=UTRPYOFyA9CRzdW0psndgr8xCeOwvnm2
-      - KEYCLOAK_ISSUER=http://lvh.me:8080/realms/docs
-      - KEYCLOAK_INTERNAL_ISSUER=http://keycloak:8080/realms/docs
-      - KEYCLOAK_PUBLIC_ISSUER=http://lvh.me:8080
+      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
+      - KEYCLOAK_ISSUER=${KEYCLOAK_ISSUER_URI}
+      - KEYCLOAK_INTERNAL_ISSUER=${KEYCLOAK_INTERNAL_ISSUER}
+      - KEYCLOAK_PUBLIC_ISSUER=${KEYCLOAK_PUBLIC_ISSUER}
       - AUTH_URL=http://localhost/api/auth
       - NEXTAUTH_URL=http://localhost
       - BACKEND_URL=http://nginx
@@ -87,6 +102,11 @@ services:
     depends_on:
       - backend_1
       - backend_2
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - app-net
   nginx:
@@ -130,7 +150,7 @@ services:
     networks:
       - db-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${SPRING_DATASOURCE_USERNAME} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -144,10 +164,10 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      KC_DB_USERNAME: user
-      KC_DB_PASSWORD: abc
+      KC_DB_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      KC_DB_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
       KC_HEALTH_ENABLED: "true"
-      KC_HOSTNAME: lvh.me
+      KC_HOSTNAME: ${KC_HOSTNAME}
     secrets:
       - db_username
       - db_password
@@ -171,6 +191,20 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+  
+  db-migrator:
+    image: alpine
+    profiles:
+      - migrate
+    restart: no
+    command: sh -c "echo 'Running migrations...'"
+    networks:
+      - db-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
 
 volumes:
   postgres-data:
