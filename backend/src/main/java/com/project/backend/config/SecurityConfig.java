@@ -28,6 +28,7 @@ public class SecurityConfig {
         http
             .authorizeHttpRequests((authorize) -> authorize
                 .requestMatchers("/ws/**").permitAll()
+                .requestMatchers("/health", "/api/stats").permitAll()
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer((oauth2) -> oauth2
